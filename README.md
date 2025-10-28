@@ -1,19 +1,20 @@
 # NZ Post Package Tracker
 
-A simple Astro app that tracks NZ Post packages and sends browser notifications when the package status changes.
+A simple Astro app that tracks NZ Post packages by scraping their public tracking page and sends browser notifications when the package status changes.
 
 ## Features
 
-- Track NZ Post packages using their tracking API
+- Track NZ Post packages without requiring an API key
 - Automatic polling every minute to check for status changes
 - Browser notifications when package status changes
 - Clean, modern UI
-- API key stored securely in browser's local storage
+- Tracking ID stored in browser's local storage
+- Server-side HTML scraping via Cloudflare Pages Functions to avoid CORS issues
 
 ## Prerequisites
 
 - Node.js 18+ and npm
-- NZ Post API key ([Get one here](https://www.nzpost.co.nz/business/developer-centre/nz-post-legacy-apis/tracking-api/get-a-tracking-api-key))
+- No API key required!
 
 ## Getting Started
 
@@ -68,32 +69,46 @@ wrangler pages deploy dist
 
 ## Usage
 
-1. Enter your NZ Post API key (required)
-2. Enter a tracking ID (e.g., `00894000221028022521`)
-3. Click **Start Tracking**
-4. Allow browser notifications when prompted
-5. The app will check for updates every minute
-6. You'll receive a notification when the package status changes
+1. Enter a tracking ID (e.g., `00894000221028022521`)
+2. Click **Start Tracking**
+3. Allow browser notifications when prompted
+4. The app will check for updates every minute
+5. You'll receive a notification when the package status changes
 
 ## Technical Details
 
-- **API Endpoint**: `http://api.nzpost.co.nz/tracking/track`
+- **Scraping Target**: `https://www.nzpost.co.nz/tools/tracking`
+- **Scraping Method**: Cloudflare Pages Function (`/functions/api/track.ts`)
 - **Polling Interval**: 60 seconds (1 minute)
 - **Change Detection**: Compares full JSON response to detect any changes
 - **Notification**: Browser Notification API
 
 ## Notes
 
-- The API key is stored in your browser's local storage
+- The tracking ID is stored in your browser's local storage
 - Tracking runs in the active browser tab only
 - Close the tab or click "Stop Tracking" to stop polling
-- You need to obtain your own NZ Post API key to use this app
+- No API key required - the app scrapes the public tracking page
 
-## CORS Solution
+## How It Works
 
-The NZ Post API has CORS restrictions when called directly from a browser. This app uses Cloudflare Pages Functions to proxy API requests, which solves CORS issues automatically when deployed to Cloudflare Pages.
+Since the NZ Post tracking page has CORS restrictions when accessed directly from a browser, this app uses a Cloudflare Pages Function to:
 
-The proxy function is located at `/functions/api/track.ts` and is automatically deployed with your Pages site.
+1. Fetch the HTML from the NZ Post tracking page server-side
+2. Parse the HTML to extract tracking information
+3. Return structured JSON data to the frontend
+
+The scraping function is located at `/functions/api/track.ts` and is automatically deployed with your Cloudflare Pages site.
+
+### HTML Scraping
+
+The function uses regex patterns to extract:
+- Package status (e.g., "Delivered", "In Transit")
+- Detailed descriptions
+- Event history with dates and times
+- Location information
+
+This approach doesn't require an API key and works with any valid NZ Post tracking number.
 
 ## License
 

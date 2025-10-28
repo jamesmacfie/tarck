@@ -194,15 +194,6 @@ const title = "NZ Post Package Tracker";
       <p class="subtitle">Track your package and get notified of status changes</p>
 
       <div class="form-group">
-        <label for="apiKey">NZ Post API Key</label>
-        <input
-          type="password"
-          id="apiKey"
-          placeholder="Enter your NZ Post API key"
-        />
-      </div>
-
-      <div class="form-group">
         <label for="trackingId">Tracking ID</label>
         <input
           type="text"
@@ -221,43 +212,41 @@ const title = "NZ Post Package Tracker";
 
       <div class="note">
         <strong>Note:</strong>
-        You need an NZ Post API key to use this tracker.
-        <a href="https://www.nzpost.co.nz/business/developer-centre/nz-post-legacy-apis/tracking-api/get-a-tracking-api-key" target="_blank">
-          Get your API key here
-        </a>
+        This tracker scrapes the public NZ Post tracking page. No API key required!
+        Simply enter your tracking number and click "Start Tracking".
       </div>
     </div>
 
     <script>
       interface TrackingEvent {
-        flag?: string;
-        timestamp?: string;
         date?: string;
+        time?: string;
+        location?: string;
         description?: string;
       }
 
       interface TrackingData {
-        short_description?: string;
-        detail_description?: string;
+        trackingId: string;
+        status?: string;
+        details?: string;
         events?: TrackingEvent[];
-        source?: string;
+        lastUpdated: string;
       }
 
       let intervalId: number | null = null;
       let previousData: string | null = null;
       let notificationPermission = false;
 
-      const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
       const trackingIdInput = document.getElementById('trackingId') as HTMLInputElement;
       const startBtn = document.getElementById('startBtn') as HTMLButtonElement;
       const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement;
       const statusDiv = document.getElementById('status') as HTMLDivElement;
       const trackingInfoDiv = document.getElementById('trackingInfo') as HTMLDivElement;
 
-      // Load saved API key
-      const savedApiKey = localStorage.getItem('nzpost_api_key');
-      if (savedApiKey) {
-        apiKeyInput.value = savedApiKey;
+      // Load saved tracking ID
+      const savedTrackingId = localStorage.getItem('nzpost_tracking_id');
+      if (savedTrackingId) {
+        trackingIdInput.value = savedTrackingId;
       }
 
       // Request notification permission
@@ -290,22 +279,24 @@ const title = "NZ Post Package Tracker";
         trackingInfoDiv.style.display = 'block';
         trackingInfoDiv.innerHTML = `
           <h3>Current Status</h3>
-          <p><strong>Status:</strong> ${data.short_description || 'N/A'}</p>
-          <p><strong>Details:</strong> ${data.detail_description || 'N/A'}</p>
+          <p><strong>Tracking ID:</strong> ${data.trackingId}</p>
+          <p><strong>Status:</strong> ${data.status || 'N/A'}</p>
+          ${data.details ? `<p><strong>Details:</strong> ${data.details}</p>` : ''}
           ${data.events && data.events.length > 0 ? `
             <div class="detail">
               <p><strong>Latest Event:</strong></p>
               <p>${data.events[0].description || 'N/A'}</p>
-              <p><small>${data.events[0].date || ''} ${data.events[0].timestamp || ''}</small></p>
+              <p><small>${data.events[0].date || ''} ${data.events[0].time || ''}</small></p>
             </div>
           ` : ''}
+          <p><small>Last updated: ${new Date(data.lastUpdated).toLocaleString()}</small></p>
         `;
       }
 
-      async function fetchTrackingData(apiKey: string, trackingId: string): Promise<TrackingData | null> {
+      async function fetchTrackingData(trackingId: string): Promise<TrackingData | null> {
         try {
-          // Use Cloudflare Pages Function to avoid CORS issues
-          const url = `/api/track?api_key=${encodeURIComponent(apiKey)}&trackid=${encodeURIComponent(trackingId)}`;
+          // Use Cloudflare Pages Function to scrape HTML and avoid CORS issues
+          const url = `/api/track?trackid=${encodeURIComponent(trackingId)}`;
 
           const response = await fetch(url, {
             method: 'GET',
@@ -319,8 +310,8 @@ const title = "NZ Post Package Tracker";
             throw new Error(errorData.error || `API returned status ${response.status}`);
           }
 
-          const data = await response.json();
-          return Array.isArray(data) && data.length > 0 ? data[0] : data;
+          const data = await response.json() as TrackingData;
+          return data;
         } catch (error) {
           console.error('Error fetching tracking data:', error);
           throw error;
@@ -328,15 +319,14 @@ const title = "NZ Post Package Tracker";
       }
 
       async function checkTracking() {
-        const apiKey = apiKeyInput.value.trim();
         const trackingId = trackingIdInput.value.trim();
 
-        if (!apiKey || !trackingId) {
+        if (!trackingId) {
           return;
         }
 
         try {
-          const data = await fetchTrackingData(apiKey, trackingId);
+          const data = await fetchTrackingData(trackingId);
 
           if (!data) {
             showStatus('No tracking data found', 'error');
@@ -367,21 +357,15 @@ const title = "NZ Post Package Tracker";
       }
 
       startBtn.addEventListener('click', async () => {
-        const apiKey = apiKeyInput.value.trim();
         const trackingId = trackingIdInput.value.trim();
-
-        if (!apiKey) {
-          showStatus('Please enter your NZ Post API key', 'error');
-          return;
-        }
 
         if (!trackingId) {
           showStatus('Please enter a tracking ID', 'error');
           return;
         }
 
-        // Save API key
-        localStorage.setItem('nzpost_api_key', apiKey);
+        // Save tracking ID
+        localStorage.setItem('nzpost_tracking_id', trackingId);
 
         // Request notification permission
         const hasPermission = await requestNotificationPermission();
@@ -390,7 +374,6 @@ const title = "NZ Post Package Tracker";
         }
 
         // Disable inputs and start button
-        apiKeyInput.disabled = true;
         trackingIdInput.disabled = true;
         startBtn.disabled = true;
         stopBtn.disabled = false;
@@ -414,7 +397,6 @@ const title = "NZ Post Package Tracker";
         }
 
         // Re-enable inputs and buttons
-        apiKeyInput.disabled = false;
         trackingIdInput.disabled = false;
         startBtn.disabled = false;
         stopBtn.disabled = true;
