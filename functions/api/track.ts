@@ -102,6 +102,18 @@ function parseTrackingHTML(html: string, trackId: string): TrackingData {
     console.error('Error parsing HTML:', error);
   }
 
+  // Log parsed data for debugging
+  console.log('=== Parsed Tracking Data ===');
+  console.log('Tracking ID:', data.trackingId);
+  console.log('Status:', data.status);
+  console.log('Details:', data.details);
+  console.log('Events count:', data.events?.length || 0);
+  if (data.events && data.events.length > 0) {
+    console.log('Events:', JSON.stringify(data.events, null, 2));
+  }
+  console.log('Last Updated:', data.lastUpdated);
+  console.log('============================');
+
   return data;
 }
 

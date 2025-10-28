@@ -321,6 +321,16 @@ const title = "NZ Post Package Tracker";
           }
 
           const data = await response.json() as TrackingData;
+
+          // Log received data for debugging
+          console.log('=== Received Tracking Data ===');
+          console.log('Tracking ID:', data.trackingId);
+          console.log('Status:', data.status);
+          console.log('Details:', data.details);
+          console.log('Events:', data.events);
+          console.log('Last Updated:', data.lastUpdated);
+          console.log('==============================');
+
           return data;
         } catch (error) {
           console.error('Error fetching tracking data:', error);
