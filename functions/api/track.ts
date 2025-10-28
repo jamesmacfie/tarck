@@ -26,63 +26,75 @@ function parseTrackingHTML(html: string, trackId: string): TrackingData {
   };
 
   try {
-    // Look for tracking status in various possible formats
-    // NZ Post typically shows status in specific divs or spans
-
-    // Try to find status heading or main status text
-    const statusMatch = html.match(/<h[1-3][^>]*class="[^"]*status[^"]*"[^>]*>([^<]+)<\/h[1-3]>/i) ||
-                       html.match(/<div[^>]*class="[^"]*status[^"]*"[^>]*>([^<]+)<\/div>/i) ||
-                       html.match(/<span[^>]*class="[^"]*status[^"]*"[^>]*>([^<]+)<\/span>/i);
-
-    if (statusMatch) {
-      data.status = statusMatch[1].trim();
+    // Extract estimated delivery date
+    const eddMatch = html.match(/HistoryCard_estimatedDeliveryDate[^>]*>([^<]+)<\/span>/i);
+    if (eddMatch) {
+      data.status = `Estimated delivery: ${eddMatch[1].trim()}`;
     }
 
-    // Try to find detailed description
-    const detailsMatch = html.match(/<div[^>]*class="[^"]*details?[^"]*"[^>]*>([^<]+)<\/div>/i) ||
-                        html.match(/<p[^>]*class="[^"]*description[^"]*"[^>]*>([^<]+)<\/p>/i);
-
-    if (detailsMatch) {
-      data.details = detailsMatch[1].trim();
-    }
-
-    // Try to extract event history/timeline
-    // Look for table rows or list items that contain tracking events
-    const eventPattern = /<tr[^>]*>[\s\S]*?<td[^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>[\s\S]*?<\/tr>/gi;
-    let eventMatch;
-
-    while ((eventMatch = eventPattern.exec(html)) !== null) {
-      data.events?.push({
-        date: eventMatch[1].trim(),
-        time: eventMatch[2].trim(),
-        description: eventMatch[3].trim()
-      });
-    }
-
-    // Alternative: Look for list items
-    if (!data.events || data.events.length === 0) {
-      const listItemPattern = /<li[^>]*class="[^"]*event[^"]*"[^>]*>([\s\S]*?)<\/li>/gi;
-      let listMatch;
-
-      while ((listMatch = listItemPattern.exec(html)) !== null) {
-        const itemHtml = listMatch[1];
-        const dateMatch = itemHtml.match(/<span[^>]*class="[^"]*date[^"]*"[^>]*>([^<]+)<\/span>/i);
-        const timeMatch = itemHtml.match(/<span[^>]*class="[^"]*time[^"]*"[^>]*>([^<]+)<\/span>/i);
-        const descMatch = itemHtml.match(/<span[^>]*class="[^"]*desc[^"]*"[^>]*>([^<]+)<\/span>/i);
-
-        data.events?.push({
-          date: dateMatch ? dateMatch[1].trim() : undefined,
-          time: timeMatch ? timeMatch[1].trim() : undefined,
-          description: descMatch ? descMatch[1].trim() : itemHtml.replace(/<[^>]+>/g, '').trim()
-        });
+    // Extract main status (subtitle1 - most recent/important event)
+    const mainStatusMatch = html.match(/<h6[^>]*class="[^"]*MuiTypography-subtitle1[^"]*">([^<]+)<\/h6>/i);
+    if (mainStatusMatch) {
+      const statusText = mainStatusMatch[1].trim();
+      // If we already have EDD in status, append main status
+      if (data.status) {
+        data.details = statusText;
+      } else {
+        data.status = statusText;
       }
     }
 
-    // If we still don't have status, try to find any prominent text
+    // Extract all events from the HistoryCard
+    // Pattern 1: Main event (subtitle1) with full details
+    const mainEventPattern = /<h6[^>]*MuiTypography-subtitle1[^>]*>([^<]+)<\/h6>[\s\S]*?<p[^>]*MuiTypography-body2[^>]*>([^<]+)<span[^>]*HistoryCard_arrowHead[\s\S]*?<p[^>]*MuiTypography-body2[^>]*>([^<]+)<\/p>/i;
+    const mainEventMatch = html.match(mainEventPattern);
+
+    if (mainEventMatch) {
+      const dateTimeLocation = mainEventMatch[2].trim();
+      data.events?.push({
+        description: mainEventMatch[1].trim(),
+        date: dateTimeLocation,
+        time: '', // Combined in date field
+        location: mainEventMatch[3].trim()
+      });
+    }
+
+    // Pattern 2: Secondary events (subtitle2)
+    const secondaryEventPattern = /<h6[^>]*MuiTypography-subtitle2[^>]*>([^<]+)<\/h6>[\s\S]*?<span[^>]*MuiTypography-caption[^>]*>([^<]+)<\/span>/gi;
+    let secondaryMatch;
+
+    while ((secondaryMatch = secondaryEventPattern.exec(html)) !== null) {
+      data.events?.push({
+        description: secondaryMatch[1].trim(),
+        date: secondaryMatch[2].trim(),
+        time: '',
+        location: ''
+      });
+    }
+
+    // If we couldn't extract status from EDD or main status, try to find the tracking number title
     if (!data.status) {
-      const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-      if (h1Match && !h1Match[1].includes('Track')) {
-        data.status = h1Match[1].trim();
+      const titleMatch = html.match(/<h6[^>]*HistoryCard_historyCardTitle[^>]*>([^<]+)<\/h6>/i);
+      if (titleMatch) {
+        data.status = 'Tracking active';
+      } else {
+        data.status = 'Tracking information found';
+      }
+    }
+
+    // Extract "About this parcel" information
+    const aboutParcelMatch = html.match(/About this parcel<\/h6>([\s\S]*?)<\/div>\s*<\/div>\s*<div[^>]*HistoryCard_historyCardBottomCta/i);
+    if (aboutParcelMatch) {
+      const aboutHtml = aboutParcelMatch[1];
+
+      // Check for Courier
+      if (aboutHtml.includes('Courier')) {
+        data.details = (data.details ? data.details + ' | ' : '') + 'Courier delivery';
+      }
+
+      // Check for Signature required
+      if (aboutHtml.includes('Signature required')) {
+        data.details = (data.details ? data.details + ' | ' : '') + 'Signature required';
       }
     }
 

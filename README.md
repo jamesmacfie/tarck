@@ -26,11 +26,24 @@ npm install
 
 ### Development
 
+For local development with Cloudflare Pages Functions support:
+
+```bash
+npm run dev:wrangler
+```
+
+This will:
+1. Build the Astro site
+2. Start a local Cloudflare Pages development server with Functions support
+3. Visit the URL shown in the terminal (typically `http://localhost:8788`)
+
+**Note:** The regular `npm run dev` command will start Astro's dev server, but the `/api/track` endpoint won't work since it requires Cloudflare Pages Functions runtime. Use `dev:wrangler` for full functionality.
+
+Alternative - Basic Astro dev server (without scraping functionality):
 ```bash
 npm run dev
 ```
-
-Visit `http://localhost:4321` to see the app.
+Visit `http://localhost:4321` (tracking endpoint won't work)
 
 ### Build
 

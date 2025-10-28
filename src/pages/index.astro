@@ -277,18 +277,28 @@ const title = "NZ Post Package Tracker";
 
       function displayTrackingInfo(data: TrackingData) {
         trackingInfoDiv.style.display = 'block';
+
+        let eventsHtml = '';
+        if (data.events && data.events.length > 0) {
+          eventsHtml = '<div class="detail"><p><strong>Tracking History:</strong></p>';
+          data.events.forEach((event, index) => {
+            eventsHtml += `
+              <div style="margin: 10px 0; padding: 10px; background: ${index === 0 ? '#f0f7ff' : '#f9f9f9'}; border-radius: 4px;">
+                <p style="margin: 0; font-weight: ${index === 0 ? '600' : '500'};">${event.description || 'N/A'}</p>
+                <p style="margin: 5px 0 0 0;"><small>${event.date || ''}</small></p>
+                ${event.location ? `<p style="margin: 5px 0 0 0;"><small>${event.location}</small></p>` : ''}
+              </div>
+            `;
+          });
+          eventsHtml += '</div>';
+        }
+
         trackingInfoDiv.innerHTML = `
           <h3>Current Status</h3>
           <p><strong>Tracking ID:</strong> ${data.trackingId}</p>
           <p><strong>Status:</strong> ${data.status || 'N/A'}</p>
           ${data.details ? `<p><strong>Details:</strong> ${data.details}</p>` : ''}
-          ${data.events && data.events.length > 0 ? `
-            <div class="detail">
-              <p><strong>Latest Event:</strong></p>
-              <p>${data.events[0].description || 'N/A'}</p>
-              <p><small>${data.events[0].date || ''} ${data.events[0].time || ''}</small></p>
-            </div>
-          ` : ''}
+          ${eventsHtml}
           <p><small>Last updated: ${new Date(data.lastUpdated).toLocaleString()}</small></p>
         `;
       }
