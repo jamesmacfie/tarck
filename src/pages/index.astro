@@ -1,0 +1,434 @@
+---
+const title = "NZ Post Package Tracker";
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 2rem;
+      }
+
+      .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 0.9rem;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      input::placeholder {
+        color: #999;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      button {
+        flex: 1;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+      }
+
+      .btn-secondary:hover:not(:disabled) {
+        background: #e0e0e0;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .status {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+      }
+
+      .status.info {
+        background: #e3f2fd;
+        color: #1976d2;
+        border-left: 4px solid #1976d2;
+      }
+
+      .status.success {
+        background: #e8f5e9;
+        color: #388e3c;
+        border-left: 4px solid #388e3c;
+      }
+
+      .status.error {
+        background: #ffebee;
+        color: #d32f2f;
+        border-left: 4px solid #d32f2f;
+      }
+
+      .tracking-info {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+      }
+
+      .tracking-info h3 {
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .tracking-info p {
+        margin: 5px 0;
+        color: #666;
+        font-size: 0.9rem;
+      }
+
+      .tracking-info .detail {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #e0e0e0;
+      }
+
+      .note {
+        margin-top: 20px;
+        padding: 12px;
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: #856404;
+      }
+
+      .note strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      .note a {
+        color: #856404;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>NZ Post Package Tracker</h1>
+      <p class="subtitle">Track your package and get notified of status changes</p>
+
+      <div class="form-group">
+        <label for="apiKey">NZ Post API Key</label>
+        <input
+          type="password"
+          id="apiKey"
+          placeholder="Enter your NZ Post API key"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="trackingId">Tracking ID</label>
+        <input
+          type="text"
+          id="trackingId"
+          placeholder="e.g., 00894000221028022521"
+        />
+      </div>
+
+      <div class="button-group">
+        <button id="startBtn" class="btn-primary">Start Tracking</button>
+        <button id="stopBtn" class="btn-secondary" disabled>Stop Tracking</button>
+      </div>
+
+      <div id="status" style="display: none;"></div>
+      <div id="trackingInfo" style="display: none;"></div>
+
+      <div class="note">
+        <strong>Note:</strong>
+        You need an NZ Post API key to use this tracker.
+        <a href="https://www.nzpost.co.nz/business/developer-centre/nz-post-legacy-apis/tracking-api/get-a-tracking-api-key" target="_blank">
+          Get your API key here
+        </a>
+      </div>
+    </div>
+
+    <script>
+      interface TrackingEvent {
+        flag?: string;
+        timestamp?: string;
+        date?: string;
+        description?: string;
+      }
+
+      interface TrackingData {
+        short_description?: string;
+        detail_description?: string;
+        events?: TrackingEvent[];
+        source?: string;
+      }
+
+      let intervalId: number | null = null;
+      let previousData: string | null = null;
+      let notificationPermission = false;
+
+      const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
+      const trackingIdInput = document.getElementById('trackingId') as HTMLInputElement;
+      const startBtn = document.getElementById('startBtn') as HTMLButtonElement;
+      const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement;
+      const statusDiv = document.getElementById('status') as HTMLDivElement;
+      const trackingInfoDiv = document.getElementById('trackingInfo') as HTMLDivElement;
+
+      // Load saved API key
+      const savedApiKey = localStorage.getItem('nzpost_api_key');
+      if (savedApiKey) {
+        apiKeyInput.value = savedApiKey;
+      }
+
+      // Request notification permission
+      async function requestNotificationPermission() {
+        if ('Notification' in window) {
+          const permission = await Notification.requestPermission();
+          notificationPermission = permission === 'granted';
+          return notificationPermission;
+        }
+        return false;
+      }
+
+      function showNotification(title: string, body: string) {
+        if (notificationPermission && 'Notification' in window) {
+          new Notification(title, {
+            body,
+            icon: '/favicon.ico',
+            tag: 'nzpost-tracker'
+          });
+        }
+      }
+
+      function showStatus(message: string, type: 'info' | 'success' | 'error') {
+        statusDiv.style.display = 'block';
+        statusDiv.className = `status ${type}`;
+        statusDiv.textContent = message;
+      }
+
+      function displayTrackingInfo(data: TrackingData) {
+        trackingInfoDiv.style.display = 'block';
+        trackingInfoDiv.innerHTML = `
+          <h3>Current Status</h3>
+          <p><strong>Status:</strong> ${data.short_description || 'N/A'}</p>
+          <p><strong>Details:</strong> ${data.detail_description || 'N/A'}</p>
+          ${data.events && data.events.length > 0 ? `
+            <div class="detail">
+              <p><strong>Latest Event:</strong></p>
+              <p>${data.events[0].description || 'N/A'}</p>
+              <p><small>${data.events[0].date || ''} ${data.events[0].timestamp || ''}</small></p>
+            </div>
+          ` : ''}
+        `;
+      }
+
+      async function fetchTrackingData(apiKey: string, trackingId: string): Promise<TrackingData | null> {
+        try {
+          // Use Cloudflare Pages Function to avoid CORS issues
+          const url = `/api/track?api_key=${encodeURIComponent(apiKey)}&trackid=${encodeURIComponent(trackingId)}`;
+
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `API returned status ${response.status}`);
+          }
+
+          const data = await response.json();
+          return Array.isArray(data) && data.length > 0 ? data[0] : data;
+        } catch (error) {
+          console.error('Error fetching tracking data:', error);
+          throw error;
+        }
+      }
+
+      async function checkTracking() {
+        const apiKey = apiKeyInput.value.trim();
+        const trackingId = trackingIdInput.value.trim();
+
+        if (!apiKey || !trackingId) {
+          return;
+        }
+
+        try {
+          const data = await fetchTrackingData(apiKey, trackingId);
+
+          if (!data) {
+            showStatus('No tracking data found', 'error');
+            return;
+          }
+
+          const currentDataString = JSON.stringify(data);
+
+          // Check if data has changed
+          if (previousData && previousData !== currentDataString) {
+            showStatus('Package status changed!', 'success');
+            showNotification(
+              'Package Status Changed',
+              'Your NZ Post package tracking status has been updated. Check the app for details.'
+            );
+          } else if (!previousData) {
+            showStatus('Tracking started successfully', 'success');
+          } else {
+            showStatus(`Last checked: ${new Date().toLocaleTimeString()} - No changes`, 'info');
+          }
+
+          previousData = currentDataString;
+          displayTrackingInfo(data);
+
+        } catch (error) {
+          showStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+        }
+      }
+
+      startBtn.addEventListener('click', async () => {
+        const apiKey = apiKeyInput.value.trim();
+        const trackingId = trackingIdInput.value.trim();
+
+        if (!apiKey) {
+          showStatus('Please enter your NZ Post API key', 'error');
+          return;
+        }
+
+        if (!trackingId) {
+          showStatus('Please enter a tracking ID', 'error');
+          return;
+        }
+
+        // Save API key
+        localStorage.setItem('nzpost_api_key', apiKey);
+
+        // Request notification permission
+        const hasPermission = await requestNotificationPermission();
+        if (!hasPermission) {
+          showStatus('Notification permission denied. You will not receive notifications.', 'error');
+        }
+
+        // Disable inputs and start button
+        apiKeyInput.disabled = true;
+        trackingIdInput.disabled = true;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+
+        // Reset previous data
+        previousData = null;
+
+        // Initial check
+        await checkTracking();
+
+        // Start polling every minute (60000 ms)
+        intervalId = window.setInterval(checkTracking, 60000);
+
+        showStatus('Tracking started. Checking every minute...', 'info');
+      });
+
+      stopBtn.addEventListener('click', () => {
+        if (intervalId !== null) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+
+        // Re-enable inputs and buttons
+        apiKeyInput.disabled = false;
+        trackingIdInput.disabled = false;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+
+        previousData = null;
+        showStatus('Tracking stopped', 'info');
+      });
+
+      // Clean up on page unload
+      window.addEventListener('beforeunload', () => {
+        if (intervalId !== null) {
+          clearInterval(intervalId);
+        }
+      });
+    </script>
+  </body>
+</html>
